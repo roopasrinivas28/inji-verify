@@ -27,6 +27,14 @@ const createQrNotFoundError = (message = "No QR code found") => {
     return error;
 };
 
+const createMultipleQrFoundError = () => {
+    const error = new Error(
+        "Multiple QR codes detected, please retry with an image containing a single QR code.",
+    );
+    error.name = "MULTIPLE_QR_FOUND";
+    return error;
+};
+
 const containsPotentialQrCode = async (file: File): Promise<boolean> => {
     const imageUrl = URL.createObjectURL(file);
 
@@ -108,9 +116,13 @@ export const readQRcodeFromImageFile = async (
         tryDenoise: true,
     });
 
-    const decodedQrCode = results.find((result) => result.isValid);
-    if (decodedQrCode) {
-        return decodedQrCode.text;
+    const validQrCodes = results.filter((result) => result.isValid);
+    if (validQrCodes.length > 1) {
+        throw createMultipleQrFoundError();
+    }
+
+    if (validQrCodes.length === 1) {
+        return validQrCodes[0].text;
     }
 
     if (results.some((result) => result.format === "QRCode" && !result.isValid)) {
